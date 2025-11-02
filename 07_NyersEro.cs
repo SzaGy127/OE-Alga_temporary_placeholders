@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 
 namespace OE.ALGA.Optimalizalas
 {
-    public class HatizsakProblema 
+    public class HatizsakProblema
     {
-        public HatizsakProblema(int n, int wmax, int[] w, double[] p)
+        public HatizsakProblema(int n, int wmax, int[] w, float[] p)
         {
             N = n;
             Wmax = wmax;
@@ -15,12 +15,12 @@ namespace OE.ALGA.Optimalizalas
         public int N { get; }
         public int Wmax { get; }
         public int[] W { get; }
-        public double[] P { get; }
+        public float[] P { get; }
 
         public int OsszSuly(bool[] pakolas)
         {
             int s = 0;
-            for(int i = 0; i < N; i++)
+            for (int i = 0; i < N; i++)
             {
                 if (pakolas[i])
                 {
@@ -30,10 +30,10 @@ namespace OE.ALGA.Optimalizalas
             return s;
         }
 
-        public double OsszErtek(bool[] pakolas)
+        public float OsszErtek(bool[] pakolas)
         {
-            double s = 0;
-            for(int i = 0; i < N; i++)
+            float s = 0;
+            for (int i = 0; i < N; i++)
             {
                 if (pakolas[i])
                 {
@@ -45,11 +45,7 @@ namespace OE.ALGA.Optimalizalas
 
         public bool Ervenyes(bool[] pakolas)
         {
-            if(OsszSuly(pakolas) < Wmax)
-            {
-                return true;
-            }
-            return false;
+            return OsszSuly(pakolas) <= Wmax;
         }
     }
 
@@ -57,76 +53,81 @@ namespace OE.ALGA.Optimalizalas
     {
         int m; // # of solutions
         Func<int, T> generator; //fv ami legenerálja az összes lehetséges értéket (egyesével)
-        Func<T, double> josag; //fv ami megmondja, mennyire jó/rossz az adott pakolas
+        Func<T, float> josag; //fv ami megmondja, mennyire jó/rossz az adott pakolas
+        private int lepesSzam = 0;
 
-        public NyersEro(int m, Func<int, T> generator, Func<T, double> josag)
+        public NyersEro(int m, Func<int, T> generator, Func<T, float> josag)
         {
             this.m = m;
             this.generator = generator;
             this.josag = josag;
-            //LepesSzam = 0;
         }
 
-        public int LepesSzam { get; } //!!missing implementation!!
+        public int LepesSzam { get { return lepesSzam; } }
 
-        public T OptimalisMegoldas() 
+        public T OptimalisMegoldas()
         {
-            T o = generator(0);
-            for(int i = 1; i < m; i++)
+            T o = generator(1);
+            lepesSzam = 0;
+            for(int i = 2; i <= m; i++)
             {
                 T x = generator(i);
-                if(josag(x) > josag(o))
+                if (josag(x) > josag(o))
                 {
                     o = x;
                 }
+                lepesSzam++;
             }
             return o;
         }
     }
 
-    public class NyersEroHatizsakProblema
+    public class NyersEroHatizsakPakolas
     {
         HatizsakProblema problema;
+        private int lepesSzam = 0;
 
-        public NyersEroHatizsakProblema(HatizsakProblema problema)
+        public NyersEroHatizsakPakolas(HatizsakProblema problema)
         {
             this.problema = problema;
         }
 
-        public int LepesSzam { get; }   //!!missing implementation!!
+        public int LepesSzam { get { return lepesSzam; } }   //!!missing implementation!!
                                         //majd ezt az optimalismegoldasban kell beállítani
-        public bool[] OptimalisMegoldas()
-        {
-            int help = 2;
-            for(int i = 0; i < problema.N; i++)
-            {
-                help *= 2;
-            }
-            NyersEro<bool[]> nyersEro = new NyersEro<bool[]>(help, Generator, Josag);
-            return nyersEro.OptimalisMegoldas();
-        }
-
-        public double OptimalisErtek()
-        {
-            throw new NotImplementedException();
-        }
-
         public bool[] Generator(int i)
         {
-            bool[] output = new bool[problema.N];
-
+            int num = i - 1;
+            bool[] K = new bool[problema.N];
+            for(int j = 0; j <  problema.N; j++)
+            {
+                K[j] = (num / i << j) % 2 == 1;
+            }
+            return K;
         }
 
-        public double Josag(bool[] pakolas)
+        public float Josag(bool[] pakolas)
         {
-            for(int i = 0; i < pakolas.Length; i++)
+            if (problema.Ervenyes(pakolas))
             {
-                if (!pakolas[i])
-                {
-                    return -1;
-                }
+                return problema.OsszErtek(pakolas);
             }
-            return problema.OsszErtek(pakolas);
+            else
+            {
+                return -1;
+            }
+        }
+
+        public bool[] OptimalisMegoldas()
+        {
+            NyersEro<bool[]> nyersEro = new NyersEro<bool[]>(1 << problema.N, Generator, Josag);
+            bool[] output = nyersEro.OptimalisMegoldas();
+            lepesSzam = nyersEro.LepesSzam;
+            return output;
+        }
+
+        public float OptimalisErtek()
+        {
+            return problema.OsszErtek(OptimalisMegoldas());
         }
     }
 }
